@@ -16,8 +16,7 @@ import (
 
 	"github.com/screwdriver-cd/launcher/executor"
 	"github.com/screwdriver-cd/launcher/screwdriver"
-	"gopkg.in/fatih/color.v1"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 // These variables get set by the build script via the LDFLAGS
@@ -37,8 +36,9 @@ var readFile = ioutil.ReadFile
 var newEmitter = screwdriver.NewEmitter
 var marshal = json.Marshal
 var unmarshal = json.Unmarshal
-var cyanFprintf = color.New(color.FgCyan).Add(color.Underline).FprintfFunc()
-var blackSprint = color.New(color.FgHiBlack).SprintFunc()
+
+// var cyanFprintf = color.New(color.FgCyan).Add(color.Underline).FprintfFunc()
+// var blackSprint = color.New(color.FgHiBlack).SprintFunc()
 
 var cleanExit = func() {
 	os.Exit(0)
@@ -192,6 +192,12 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 		return fmt.Errorf("Fetching Build ID %d: %v", buildID, err)
 	}
 
+	log.Printf("Fetching Event %d", b.EventID)
+	e, err := api.EventFromID(b.EventID)
+	if err != nil {
+		return fmt.Errorf("Fetching Event ID %d: %v", b.EventID, err)
+	}
+
 	log.Printf("Fetching Job %d", b.JobID)
 	j, err := api.JobFromID(b.JobID)
 	if err != nil {
@@ -204,8 +210,33 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 		return fmt.Errorf("Fetching Pipeline ID %d: %v", j.PipelineID, err)
 	}
 
+	// If no parent build ID, get the parent event meta
 	if b.ParentBuildID == 0 {
-		log.Printf("This build has no Parent Build, so fetching Meta is skipped")
+		log.Printf("Fetching Parent Event %d", e.ParentEventID)
+		pe, err := api.EventFromID(e.ParentEventID)
+		if err != nil {
+			return fmt.Errorf("Fetching Parent Event ID %d: %v", e.ParentEventID, err)
+		}
+
+		// Write to "meta.json" file
+		metaFile := "meta.json"
+
+		log.Printf("Creating Meta Space in %v", metaSpace)
+		err = createMetaSpace(metaSpace)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("Fetching Parent Event Meta JSON %v", pe.ID)
+		peMetaByte, err := marshal(pe.Meta)
+		if err != nil {
+			return fmt.Errorf("Parsing Parent Event(%d) Meta JSON: %v", pe.ID, err)
+		}
+
+		err = writeFile(metaSpace+"/"+metaFile, peMetaByte, 0666)
+		if err != nil {
+			return fmt.Errorf("Writing Parent Event(%d) Meta JSON: %v", pe.ID, err)
+		}
 	} else {
 		log.Printf("Fetching Parent Build %d", b.ParentBuildID)
 		pb, err := api.BuildFromID(b.ParentBuildID)
@@ -263,14 +294,14 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 		return err
 	}
 
-	cyanFprintf(emitter, "Screwdriver Launcher information\n")
-	fmt.Fprintf(emitter, "%s%s\n", blackSprint("Version:        v"), version)
-	fmt.Fprintf(emitter, "%s%d\n", blackSprint("Pipeline:       #"), j.PipelineID)
-	fmt.Fprintf(emitter, "%s%s\n", blackSprint("Job:            "), j.Name)
-	fmt.Fprintf(emitter, "%s%d\n", blackSprint("Build:          #"), buildID)
-	fmt.Fprintf(emitter, "%s%s\n", blackSprint("Workspace Dir:  "), w.Root)
-	fmt.Fprintf(emitter, "%s%s\n", blackSprint("Source Dir:     "), w.Src)
-	fmt.Fprintf(emitter, "%s%s\n", blackSprint("Artifacts Dir:  "), w.Artifacts)
+	// cyanFprintf(emitter, "Screwdriver Launcher information\n")
+	// fmt.Fprintf(emitter, "%s%s\n", blackSprint("Version:        v"), version)
+	// fmt.Fprintf(emitter, "%s%d\n", blackSprint("Pipeline:       #"), j.PipelineID)
+	// fmt.Fprintf(emitter, "%s%s\n", blackSprint("Job:            "), j.Name)
+	// fmt.Fprintf(emitter, "%s%d\n", blackSprint("Build:          #"), buildID)
+	// fmt.Fprintf(emitter, "%s%s\n", blackSprint("Workspace Dir:  "), w.Root)
+	// fmt.Fprintf(emitter, "%s%s\n", blackSprint("Source Dir:     "), w.Src)
+	// fmt.Fprintf(emitter, "%s%s\n", blackSprint("Artifacts Dir:  "), w.Artifacts)
 
 	oldJobName := j.Name
 	pr := prNumber(j.Name)
