@@ -36,8 +36,9 @@ var readFile = ioutil.ReadFile
 var newEmitter = screwdriver.NewEmitter
 var marshal = json.Marshal
 var unmarshal = json.Unmarshal
-var cyanFprintf = color.New(color.FgCyan).Add(color.Underline).FprintfFunc()
-var blackSprint = color.New(color.FgHiBlack).SprintFunc()
+
+// var cyanFprintf = color.New(color.FgCyan).Add(color.Underline).FprintfFunc()
+// var blackSprint = color.New(color.FgHiBlack).SprintFunc()
 
 var cleanExit = func() {
 	os.Exit(0)
@@ -293,14 +294,14 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 		return err
 	}
 
-	cyanFprintf(emitter, "Screwdriver Launcher information\n")
-	fmt.Fprintf(emitter, "%s%s\n", blackSprint("Version:        v"), version)
-	fmt.Fprintf(emitter, "%s%d\n", blackSprint("Pipeline:       #"), j.PipelineID)
-	fmt.Fprintf(emitter, "%s%s\n", blackSprint("Job:            "), j.Name)
-	fmt.Fprintf(emitter, "%s%d\n", blackSprint("Build:          #"), buildID)
-	fmt.Fprintf(emitter, "%s%s\n", blackSprint("Workspace Dir:  "), w.Root)
-	fmt.Fprintf(emitter, "%s%s\n", blackSprint("Source Dir:     "), w.Src)
-	fmt.Fprintf(emitter, "%s%s\n", blackSprint("Artifacts Dir:  "), w.Artifacts)
+	// cyanFprintf(emitter, "Screwdriver Launcher information\n")
+	// fmt.Fprintf(emitter, "%s%s\n", blackSprint("Version:        v"), version)
+	// fmt.Fprintf(emitter, "%s%d\n", blackSprint("Pipeline:       #"), j.PipelineID)
+	// fmt.Fprintf(emitter, "%s%s\n", blackSprint("Job:            "), j.Name)
+	// fmt.Fprintf(emitter, "%s%d\n", blackSprint("Build:          #"), buildID)
+	// fmt.Fprintf(emitter, "%s%s\n", blackSprint("Workspace Dir:  "), w.Root)
+	// fmt.Fprintf(emitter, "%s%s\n", blackSprint("Source Dir:     "), w.Src)
+	// fmt.Fprintf(emitter, "%s%s\n", blackSprint("Artifacts Dir:  "), w.Artifacts)
 
 	oldJobName := j.Name
 	pr := prNumber(j.Name)
