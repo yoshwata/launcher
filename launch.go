@@ -16,8 +16,7 @@ import (
 
 	"github.com/screwdriver-cd/launcher/executor"
 	"github.com/screwdriver-cd/launcher/screwdriver"
-	"gopkg.in/fatih/color.v1"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 // These variables get set by the build script via the LDFLAGS
@@ -192,6 +191,12 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 		return fmt.Errorf("Fetching Build ID %d: %v", buildID, err)
 	}
 
+	log.Printf("Fetching Event %d", b.EventID)
+	e, err := api.EventFromID(b.EventID)
+	if err != nil {
+		return fmt.Errorf("Fetching Event ID %d: %v", b.EventID, err)
+	}
+
 	log.Printf("Fetching Job %d", b.JobID)
 	j, err := api.JobFromID(b.JobID)
 	if err != nil {
@@ -204,8 +209,33 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 		return fmt.Errorf("Fetching Pipeline ID %d: %v", j.PipelineID, err)
 	}
 
+	// If no parent build ID, get the parent event meta
 	if b.ParentBuildID == 0 {
-		log.Printf("This build has no Parent Build, so fetching Meta is skipped")
+		log.Printf("Fetching Parent Event %d", e.ParentEventID)
+		pe, err := api.EventFromID(e.ParentEventID)
+		if err != nil {
+			return fmt.Errorf("Fetching Parent Event ID %d: %v", e.ParentEventID, err)
+		}
+
+		// Write to "meta.json" file
+		metaFile := "meta.json"
+
+		log.Printf("Creating Meta Space in %v", metaSpace)
+		err = createMetaSpace(metaSpace)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("Fetching Parent Event Meta JSON %v", pe.ID)
+		peMetaByte, err := marshal(pe.Meta)
+		if err != nil {
+			return fmt.Errorf("Parsing Parent Event(%d) Meta JSON: %v", pe.ID, err)
+		}
+
+		err = writeFile(metaSpace+"/"+metaFile, peMetaByte, 0666)
+		if err != nil {
+			return fmt.Errorf("Writing Parent Event(%d) Meta JSON: %v", pe.ID, err)
+		}
 	} else {
 		log.Printf("Fetching Parent Build %d", b.ParentBuildID)
 		pb, err := api.BuildFromID(b.ParentBuildID)

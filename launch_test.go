@@ -19,6 +19,7 @@ const (
 	TestWorkspace        = "/sd/workspace"
 	TestEmitter          = "./data/emitter"
 	TestBuildID          = 1234
+	TestEventID          = 2234
 	TestJobID            = 2345
 	TestPipelineID       = 3456
 	TestParentBuildID    = 1111
@@ -37,6 +38,7 @@ var TestScmRepo = screwdriver.ScmRepo(FakeScmRepo{
 })
 
 type FakeBuild screwdriver.Build
+type FakeEvent screwdriver.Event
 type FakeJob screwdriver.Job
 type FakePipeline screwdriver.Pipeline
 type FakeScmRepo screwdriver.ScmRepo
@@ -44,7 +46,10 @@ type FakeScmRepo screwdriver.ScmRepo
 func mockAPI(t *testing.T, testBuildID, testJobID, testPipelineID int, testStatus screwdriver.BuildStatus) MockAPI {
 	return MockAPI{
 		buildFromID: func(buildID int) (screwdriver.Build, error) {
-			return screwdriver.Build(FakeBuild{ID: testBuildID, JobID: testJobID, SHA: TestSHA}), nil
+			return screwdriver.Build(FakeBuild{ID: testBuildID, EventID: testEventID, JobID: testJobID, SHA: TestSHA}), nil
+		},
+		eventFromID: func(eventID int) (screwdriver.Event, error) {
+			return screwdriver.Event(FakeEvent{ID: testEventID, ParentEventID: testParentEventID, PipelineID: testJobID, SHA: TestSHA}), nil
 		},
 		jobFromID: func(jobID int) (screwdriver.Job, error) {
 			if jobID != testJobID {
@@ -83,6 +88,7 @@ func mockAPI(t *testing.T, testBuildID, testJobID, testPipelineID int, testStatu
 
 type MockAPI struct {
 	buildFromID       func(int) (screwdriver.Build, error)
+	eventFromID       func(int) (screwdriver.Event, error)
 	jobFromID         func(int) (screwdriver.Job, error)
 	pipelineFromID    func(int) (screwdriver.Pipeline, error)
 	updateBuildStatus func(screwdriver.BuildStatus, map[string]interface{}, int) error
@@ -108,6 +114,13 @@ func (f MockAPI) BuildFromID(buildID int) (screwdriver.Build, error) {
 		return f.buildFromID(buildID)
 	}
 	return screwdriver.Build(FakeBuild{}), nil
+}
+
+func (f MockAPI) EventFromID(eventID int) (screwdriver.Event, error) {
+	if f.eventFromID != nil {
+		return f.eventFromID(eventID)
+	}
+	return screwdriver.Event(FakeEvent{}), nil
 }
 
 func (f MockAPI) JobFromID(jobID int) (screwdriver.Job, error) {
