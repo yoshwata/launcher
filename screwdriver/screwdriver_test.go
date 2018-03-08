@@ -172,9 +172,7 @@ func TestEventFromID(t *testing.T) {
 		{
 			event: Event{
 				ID:            1555,
-				PipelineID:    3777,
 				ParentEventID: 8765,
-				SHA:           "testSHA",
 			},
 			statusCode: 200,
 			err:        nil,

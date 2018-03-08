@@ -50,7 +50,7 @@ func mockAPI(t *testing.T, testBuildID, testJobID, testPipelineID int, testStatu
 			return screwdriver.Build(FakeBuild{ID: testBuildID, EventID: TestEventID, JobID: testJobID, SHA: TestSHA}), nil
 		},
 		eventFromID: func(eventID int) (screwdriver.Event, error) {
-			return screwdriver.Event(FakeEvent{ID: TestEventID, ParentEventID: TestParentEventID, PipelineID: testJobID, SHA: TestSHA}), nil
+			return screwdriver.Event(FakeEvent{ID: TestEventID, ParentEventID: TestParentEventID}), nil
 		},
 		jobFromID: func(jobID int) (screwdriver.Job, error) {
 			if jobID != testJobID {

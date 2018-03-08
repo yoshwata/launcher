@@ -36,7 +36,6 @@ var readFile = ioutil.ReadFile
 var newEmitter = screwdriver.NewEmitter
 var marshal = json.Marshal
 var unmarshal = json.Unmarshal
-
 var cyanFprintf = color.New(color.FgCyan).Add(color.Underline).FprintfFunc()
 var blackSprint = color.New(color.FgHiBlack).SprintFunc()
 

@@ -130,8 +130,6 @@ type Build struct {
 // Event is a Screwdriver Event
 type Event struct {
 	ID            int                    `json:"id"`
-	PipelineID    int                    `json:"pipelineId"`
-	SHA           string                 `json:"sha"`
 	Meta          map[string]interface{} `json:"meta"`
 	ParentEventID int                    `json:"parentEventId"`
 }
