@@ -192,6 +192,12 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 		return fmt.Errorf("Fetching Build ID %d: %v", buildID, err)
 	}
 
+	log.Printf("Fetching Event %d", build.EventID)
+	event, err := api.EventFromID(build.EventID)
+	if err != nil {
+		return fmt.Errorf("Fetching Event ID %d: %v", build.EventID, err)
+	}
+
 	log.Printf("Fetching Job %d", build.JobID)
 	job, err := api.JobFromID(build.JobID)
 	if err != nil {
@@ -205,18 +211,12 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 	}
 
 	metaByte := []byte("")
-	parentID := 0
 	metaFile := "meta.json" // Write to "meta.json" file
-	metaSource := ""
 
-	// If no parent build ID, get the parent event meta
-	if build.ParentBuildID == 0 {
-		log.Printf("Fetching Event %d", build.EventID)
-		event, err := api.EventFromID(build.EventID)
-		if err != nil {
-			return fmt.Errorf("Fetching Event ID %d: %v", build.EventID, err)
-		}
-
+	if build.ParentBuildID == 0 && event.ParentEventID == 0 {
+		log.Printf("This build has no Parent Build and no Parent Event, so fetching Meta is skipped")
+		// If no parent build ID, get the parent event meta
+	} else if build.ParentBuildID == 0 {
 		log.Printf("Fetching Parent Event %d", event.ParentEventID)
 		parentEvent, err := api.EventFromID(event.ParentEventID)
 		if err != nil {
@@ -229,9 +229,16 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 			return fmt.Errorf("Parsing Parent Event(%d) Meta JSON: %v", parentEvent.ID, err)
 		}
 
-		metaSource = "Event"
-		parentID = parentEvent.ID
+		log.Printf("Creating Meta Space in %v", metaSpace)
+		err = createMetaSpace(metaSpace)
+		if err != nil {
+			return err
+		}
 
+		err = writeFile(metaSpace+"/"+metaFile, metaByte, 0666)
+		if err != nil {
+			return fmt.Errorf("Writing Parent Event(%d) Meta JSON: %v", parentEvent.ID, err)
+		}
 		// If parent build exists, use parent build meta
 	} else {
 		log.Printf("Fetching Parent Build %d", build.ParentBuildID)
@@ -264,19 +271,16 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 			return fmt.Errorf("Parsing Parent Build(%d) Meta JSON: %v", parentBuild.ID, err)
 		}
 
-		metaSource = "Build"
-		parentID = parentBuild.ID
-	}
+		log.Printf("Creating Meta Space in %v", metaSpace)
+		err = createMetaSpace(metaSpace)
+		if err != nil {
+			return err
+		}
 
-	log.Printf("Creating Meta Space in %v", metaSpace)
-	err = createMetaSpace(metaSpace)
-	if err != nil {
-		return err
-	}
-
-	err = writeFile(metaSpace+"/"+metaFile, metaByte, 0666)
-	if err != nil {
-		return fmt.Errorf("Writing Parent %v(%d) Meta JSON: %v", metaSource, parentID, err)
+		err = writeFile(metaSpace+"/"+metaFile, metaByte, 0666)
+		if err != nil {
+			return fmt.Errorf("Writing Parent Build(%d) Meta JSON: %v", parentBuild.ID, err)
+		}
 	}
 
 	scm, err := parseScmURI(pipeline.ScmURI, pipeline.ScmRepo.Name)

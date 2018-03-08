@@ -823,6 +823,28 @@ func TestCreateEnvironment(t *testing.T) {
 	}
 }
 
+func TestNoParentEventID(t *testing.T) {
+	oldMarshal := marshal
+	defer func() { marshal = oldMarshal }()
+
+	api := mockAPI(t, TestEventID, TestJobID, 0, "RUNNING")
+	api.eventFromID = func(eventID int) (screwdriver.Event, error) {
+		return screwdriver.Event(FakeEvent{ID: TestEventID}), nil
+	}
+
+	fmt.Print("meow")
+	marshal = func(v interface{}) (result []byte, err error) {
+		return nil, fmt.Errorf("Testing parsing parent event meta")
+	}
+
+	err := launch(screwdriver.API(api), TestEventID, TestWorkspace, TestEmitter, TestMetaSpace, TestStoreURL, TestShellBin)
+	expected := fmt.Sprintf(`Parsing Parent Event(%d) Meta JSON: Testing parsing parent event meta`, TestParentEventID)
+
+	if err.Error() != expected {
+		t.Errorf("Error is wrong, got '%v', expected '%v'", err, expected)
+	}
+}
+
 func TestFetchParentBuildMeta(t *testing.T) {
 	oldWriteFile := writeFile
 	defer func() { writeFile = oldWriteFile }()
