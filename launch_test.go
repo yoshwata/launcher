@@ -1059,6 +1059,47 @@ func TestFetchDefaultMeta(t *testing.T) {
 	}
 }
 
+func TestFetchParameterMeta(t *testing.T) {
+	initCoverageMeta()
+	oldWriteFile := writeFile
+	defer func() { writeFile = oldWriteFile }()
+	var defaultMeta []byte
+	mockMeta := make(map[string]interface{})
+	mockMeta["foo"] = "bar"
+	mockMeta["meta"] = map[string]interface{}{
+		"baz":     "qux",
+		"summary": map[string]string{"comment": "it should be deleted"},
+	}
+	mockMeta["parameters"] = map[string]interface{}{
+		"baz": "qux",
+		"obj": map[string]string{"abc": "def"},
+	}
+
+	api := mockAPI(t, TestBuildID, TestJobID, 0, "RUNNING")
+	api.buildFromID = func(buildID int) (screwdriver.Build, error) {
+		return screwdriver.Build(FakeBuild{ID: buildID, JobID: TestJobID, Meta: mockMeta}), nil
+	}
+	api.jobFromID = func(jobID int) (screwdriver.Job, error) {
+		return screwdriver.Job(FakeJob{ID: jobID, PipelineID: TestPipelineID, Name: "main"}), nil
+	}
+	api.pipelineFromID = func(pipelineID int) (screwdriver.Pipeline, error) {
+		return screwdriver.Pipeline(FakePipeline{ID: pipelineID, ScmURI: TestScmURI, ScmRepo: TestScmRepo}), nil
+	}
+	writeFile = func(path string, data []byte, perm os.FileMode) (err error) {
+		if path == "./data/meta/meta.json" {
+			defaultMeta = data
+		}
+		return nil
+	}
+
+	err := launch(screwdriver.API(api), TestBuildID, TestWorkspace, TestEmitter, TestMetaSpace, TestStoreURL, TestUIURL, TestShellBin, TestBuildTimeout, TestBuildToken, "", "", "", "", false, false, false, 0, 10000)
+	want := []byte("{\"build\":{\"buildId\":\"1234\",\"coverageKey\":\"job:fake\",\"eventId\":\"0\",\"jobId\":\"2345\",\"jobName\":\"main\",\"pipelineId\":\"3456\",\"sha\":\"\"},\"foo\":\"bar\",\"meta\":{\"baz\":\"qux\"}}")
+
+	if err != nil || string(defaultMeta) != string(want) {
+		t.Errorf("Expected defaultMeta is %v, but: %v", string(want), string(defaultMeta))
+	}
+}
+
 func TestFetchParentBuildMeta(t *testing.T) {
 	initCoverageMeta()
 	oldWriteFile := writeFile
@@ -1083,6 +1124,82 @@ func TestFetchParentBuildMeta(t *testing.T) {
 			return screwdriver.Event(FakeEvent{ID: TestEventID, Meta: mockEventMeta}), nil
 		}
 		if eventID == TestParentEventID {
+			return screwdriver.Event(FakeEvent{ID: TestParentEventID}), nil
+		}
+		return screwdriver.Event(FakeEvent{ID: TestEventID, ParentEventID: TestParentEventID}), nil
+	}
+	api.jobFromID = func(jobID int) (screwdriver.Job, error) {
+		if jobID == TestParentJobID {
+			return screwdriver.Job(FakeJob{ID: jobID, PipelineID: TestParentPipelineID, Name: "component"}), nil
+		}
+		return screwdriver.Job(FakeJob{ID: jobID, PipelineID: TestPipelineID, Name: "main"}), nil
+	}
+	api.pipelineFromID = func(pipelineID int) (screwdriver.Pipeline, error) {
+		if pipelineID == TestParentPipelineID {
+			return screwdriver.Pipeline(FakePipeline{ID: TestParentPipelineID, ScmURI: TestScmURI, ScmRepo: TestScmRepo}), nil
+		}
+		return screwdriver.Pipeline(FakePipeline{ID: pipelineID, ScmURI: TestScmURI, ScmRepo: TestScmRepo}), nil
+	}
+	writeFile = func(path string, data []byte, perm os.FileMode) (err error) {
+		if path == "./data/meta/sd@1113:component.json" {
+			parentMeta = data
+		}
+		if path == "./data/meta/meta.json" {
+			buildMeta = data
+		}
+		return nil
+	}
+
+	err := launch(screwdriver.API(api), TestBuildID, TestWorkspace, TestEmitter, TestMetaSpace, TestStoreURL, TestUIURL, TestShellBin, TestBuildTimeout, TestBuildToken, "", "", "", "", false, false, false, 0, 10000)
+	want := []byte("{\"build\":{\"buildId\":\"1234\",\"coverageKey\":\"job:fake\",\"eventId\":\"2234\",\"jobId\":\"2345\",\"jobName\":\"main\",\"pipelineId\":\"3456\",\"sha\":\"\"},\"spooky\":\"ghost\"}")
+	wantParent := []byte("{\"hoge\":\"fuga\"}")
+
+	if err != nil || string(parentMeta) != string(wantParent) {
+		t.Errorf("Expected parentMeta is %v, but: %v", string(wantParent), string(parentMeta))
+	}
+
+	if err != nil || string(buildMeta) != string(want) {
+		t.Errorf("Expected build meta is %v, but: %v", string(want), string(buildMeta))
+	}
+}
+
+func TestFetchParentBuildParameterMeta(t *testing.T) {
+	initCoverageMeta()
+	oldWriteFile := writeFile
+	defer func() { writeFile = oldWriteFile }()
+	mockParentMeta := make(map[string]interface{})
+	mockParentMeta["hoge"] = "fuga"
+	mockParentMeta["parameters"] = map[string]interface{}{
+		"data": "parent",
+		"obj":  map[string]string{"abc": "def"},
+	}
+	mockEventMeta := make(map[string]interface{})
+	mockEventMeta["spooky"] = "ghost"
+	mockEventMeta["parameters"] = map[string]interface{}{
+		"data": "event",
+		"obj":  map[string]string{"abc": "def"},
+	}
+
+	var parentMeta []byte
+	var buildMeta []byte
+
+	api := mockAPI(t, TestBuildID, TestJobID, 0, "RUNNING")
+	// api.buildFromID = func(buildID int) (screwdriver.Build, error) {
+	// 	if buildID == TestParentBuildID {
+	// 		return screwdriver.Build(FakeBuild{ID: TestParentBuildID, EventID: TestEventID, JobID: TestParentJobID, Meta: mockParentMeta}), nil
+	// 	}
+	// 	return screwdriver.Build(FakeBuild{ID: buildID, EventID: TestEventID, JobID: TestJobID, ParentBuildID: TestParentBuildIDFloat}), nil
+	// }
+	api.buildFromID = func(buildID int) (screwdriver.Build, error) {
+		return screwdriver.Build(FakeBuild{ID: buildID, JobID: TestJobID, Meta: mockParentMeta}), nil
+	}
+	api.eventFromID = func(eventID int) (screwdriver.Event, error) {
+		if eventID == TestEventID {
+			fmt.Println("chrono")
+			return screwdriver.Event(FakeEvent{ID: TestEventID, Meta: mockEventMeta}), nil
+		}
+		if eventID == TestParentEventID {
+			fmt.Println("trigger")
 			return screwdriver.Event(FakeEvent{ID: TestParentEventID}), nil
 		}
 		return screwdriver.Event(FakeEvent{ID: TestEventID, ParentEventID: TestParentEventID}), nil

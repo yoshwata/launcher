@@ -24,6 +24,8 @@ import (
 
 	"github.com/screwdriver-cd/launcher/executor"
 	"github.com/screwdriver-cd/launcher/screwdriver"
+
+	"github.com/kr/pretty"
 )
 
 // These variables get set by the build script via the LDFLAGS
@@ -385,6 +387,8 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 	}
 	defer emitter.Close()
 
+	fmt.Println("hogehoge")
+
 	if err = api.UpdateStepStart(buildID, "sd-setup-launcher"); err != nil {
 		return fmt.Errorf("Updating sd-setup-launcher start: %v", err)
 	}
@@ -452,6 +456,9 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 	mergedMeta := map[string]interface{}{
 		"build": buildMeta,
 	}
+
+	fmt.Printf("%# v\n", pretty.Formatter(build.Meta))
+
 	if build.Meta != nil {
 		mergedMeta = deepMergeJSON(mergedMeta, build.Meta)
 	}
@@ -469,6 +476,11 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 			mergedMeta = deepMergeJSON(mergedMeta, event.Meta)
 		}
 	}
+
+	fmt.Println("after evennt.Meta")
+	fmt.Printf("%# v\n", pretty.Formatter(mergedMeta))
+	fmt.Printf("ParentEventID %v\n", event.ParentEventID)
+	fmt.Printf("parentBuildIDs %v\n", parentBuildIDs)
 
 	if len(parentBuildIDs) > 1 { // If has multiple parent build IDs, merge their metadata (join case)
 		// Get meta from all parent builds
@@ -498,8 +510,25 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 			mergedMeta = deepMergeJSON(mergedMeta, parentEvent.Meta)
 		}
 
+		fmt.Println("after parentEvent.Meta")
+		fmt.Printf("%# v\n", pretty.Formatter(mergedMeta))
+
+		// parent eventが存在するならもう一回parameterをマージ
+		fmt.Println("test")
+		fmt.Printf("%# v\n", pretty.Formatter(mergedMeta["parameters"]))
+
+		if mergedMeta["parameters"] != nil {
+			fmt.Println("has parent and meta exist")
+			mergedMeta["parameters"] = build.Meta["parameters"]
+		}
+
 		metaLog = fmt.Sprintf(`Event(%v)`, parentEvent.ID)
 	}
+
+	// mergedMeta["parameters"] = build.Meta["parameters"]
+
+	fmt.Println("fix result")
+	fmt.Printf("%# v\n", pretty.Formatter(mergedMeta))
 
 	// Initialize pr comments (Issue #1858)
 	if metadata, ok := mergedMeta["meta"]; ok {
@@ -910,7 +939,7 @@ func main() {
 				exit(screwdriver.Failure, buildID, nil, metaSpace, "")
 			}
 
-			log.Printf("Launcher process only fetch token.")
+			log.Printf("LLLLLLLLLLLLLLLLLauncher process only fetch token.")
 			fmt.Printf("%s", buildToken)
 			cleanExit()
 		}
