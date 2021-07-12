@@ -24,6 +24,8 @@ import (
 
 	"github.com/screwdriver-cd/launcher/executor"
 	"github.com/screwdriver-cd/launcher/screwdriver"
+
+	"github.com/kr/pretty"
 )
 
 // These variables get set by the build script via the LDFLAGS
@@ -436,25 +438,30 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 	coverageInfo, coverageErr := api.GetCoverageInfo(job.ID, job.PipelineID, job.Name, pipeline.ScmRepo.Name, coverageScope, pr, strconv.Itoa(job.PrParentJobID))
 
 	parentBuildIDs := convertToArray(build.ParentBuildID)
-	buildMeta := map[string]interface{}{
-		"pipelineId": strconv.Itoa(job.PipelineID),
-		"eventId":    strconv.Itoa(build.EventID),
-		"jobId":      strconv.Itoa(job.ID),
-		"buildId":    strconv.Itoa(buildID),
-		"jobName":    job.Name,
-		"sha":        build.SHA,
-	}
+	// buildMeta := map[string]interface{}{
+	// 	"pipelineId": strconv.Itoa(job.PipelineID),
+	// 	"eventId":    strconv.Itoa(build.EventID),
+	// 	"jobId":      strconv.Itoa(job.ID),
+	// 	"buildId":    strconv.Itoa(buildID),
+	// 	"jobName":    job.Name,
+	// 	"sha":        build.SHA,
+	// }
 
-	if coverageErr == nil {
-		buildMeta["coverageKey"] = coverageInfo.EnvVars["SD_SONAR_PROJECT_KEY"]
-	}
+	// buildMetaif coverageErr == nil {
+	// 	buildMeta["coverageKey"] = coverageInfo.EnvVars["SD_SONAR_PROJECT_KEY"]
+	// }
 
-	mergedMeta := map[string]interface{}{
-		"build": buildMeta,
-	}
+	mergedMeta := map[string]interface{}{}
+
+	fmt.Println("merged Meta")
+	fmt.Printf("%# v\n", pretty.Formatter(mergedMeta))
+
 	if build.Meta != nil {
 		mergedMeta = deepMergeJSON(mergedMeta, build.Meta)
 	}
+
+	fmt.Println("merge build.Meta")
+	fmt.Printf("%# v\n", pretty.Formatter(mergedMeta))
 
 	// Create meta space
 	err = createMetaSpace(metaSpace)
@@ -469,6 +476,9 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 			mergedMeta = deepMergeJSON(mergedMeta, event.Meta)
 		}
 	}
+
+	fmt.Println("merge event.Meta")
+	fmt.Printf("%# v\n", pretty.Formatter(mergedMeta))
 
 	if len(parentBuildIDs) > 1 { // If has multiple parent build IDs, merge their metadata (join case)
 		// Get meta from all parent builds
@@ -510,6 +520,28 @@ func launch(api screwdriver.API, buildID int, rootDir, emitterPath, metaSpace, s
 	if mergedMeta["parameters"] != nil {
 		mergedMeta["parameters"] = build.Meta["parameters"]
 	}
+
+	buildMeta := map[string]interface{}{
+		"pipelineId": strconv.Itoa(job.PipelineID),
+		"eventId":    strconv.Itoa(build.EventID),
+		"jobId":      strconv.Itoa(job.ID),
+		"buildId":    strconv.Itoa(buildID),
+		"jobName":    job.Name,
+		"sha":        build.SHA,
+	}
+
+	if coverageErr == nil {
+		buildMeta["coverageKey"] = coverageInfo.EnvVars["SD_SONAR_PROJECT_KEY"]
+	}
+
+	// mergedMeta := map[string]interface{}{
+	// 	"build": buildMeta,
+	// }
+
+	mergedMeta["build"] = buildMeta
+
+	fmt.Println("final meta")
+	fmt.Printf("%# v\n", pretty.Formatter(mergedMeta))
 
 	log.Println("Marshalling Merged Meta JSON")
 	metaByte, err = marshal(mergedMeta)
