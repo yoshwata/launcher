@@ -1,6 +1,6 @@
 shared:
     environment:
-        DOCKER_REPO: screwdrivercd/launcher
+        DOCKER_REPO: yoshwata/launcher
         GO111MODULE: on
 jobs:
     main:
