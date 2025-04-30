@@ -7,7 +7,7 @@ jobs:
         image: golang:1.19
         environment:
             SD_SONAR_OPTS: "-Dsonar.sources=./ -Dsonar.exclusions=**/*_test.go,**/vendor/** -Dsonar.tests=./ -Dsonar.test.inclusions=**/*_test.go -Dsonar.test.exclusions=**/vendor/** -Dsonar.go.coverage.reportPaths=${SD_ARTIFACTS_DIR}/coverage.out -Dsonar.go.tests.reportPaths=${SD_ARTIFACTS_DIR}/report.json"
-        requires: [~commit, ~pr]
+        requires: [~pr]
         steps:
             - gover: go version
             - install: go mod download
@@ -21,7 +21,7 @@ jobs:
             - test-release: "curl -sL https://git.io/goreleaser | bash -s -- --snapshot"
     publish:
         image: golang:1.19
-        requires: main
+        requires: [~commit]
         steps:
             - setup-ci: git clone https://github.com/screwdriver-cd/toolbox.git ci
             - get: go mod download
