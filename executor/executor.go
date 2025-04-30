@@ -324,7 +324,8 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 
 		go func() {
 			runCode, rcErr := doRunCommand(guid, stepFilePath, emitter, f, fReader, cmd.Name)
-			log.Printf("runCode: %d, rcErr: %v, stepName: %s", runCode, rcErr, cmd.Name)
+			// これだけでいいかも
+			log.Printf("gofunc runCode: %d, rcErr: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s", runCode, rcErr, firstError, build.ID, build.EventID, build.JobID, cmd.Name)
 			// exit code & errors from doRunCommand
 			eCode <- runCode
 			runErr <- rcErr
