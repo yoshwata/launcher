@@ -324,16 +324,20 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 
 		go func() {
 			runCode, rcErr := doRunCommand(guid, stepFilePath, emitter, f, fReader, cmd.Name)
+			log.Printf("runCode: %d, rcErr: %v, stepName: %s", runCode, rcErr, cmd.Name)
 			// exit code & errors from doRunCommand
 			eCode <- runCode
 			runErr <- rcErr
 		}()
+
+		log.Printf("hogehoge stepstart")
 
 		select {
 		case cmdErr = <-runErr:
 			if firstError == nil {
 				firstError = cmdErr
 			}
+			log.Printf("hogehoge cmdErr: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s", cmdErr, firstError, build.ID, build.EventID, build.JobID, cmd.Name)
 			code = <-eCode
 		case buildTimeout := <-invokeTimeout:
 			handleBuildTimeout(f, buildTimeout)
@@ -341,6 +345,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 				firstError = buildTimeout
 				code = 3
 			}
+			log.Printf("hogehoge timeout")
 			_ = c.Process.Signal(syscall.SIGABRT)
 			TerminateSleep(shellBin, sourceDir, true) // kill all running sleep
 
@@ -350,11 +355,13 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 				firstError = stepAbort
 				code = 1
 			}
+			log.Printf("hogehoge abort: %v", stepAbort)
 			_ = c.Process.Signal(syscall.SIGABRT)
 			TerminateSleep(shellBin, sourceDir, false) // kill all running sleep other than sleep $SD_TERMINATION_GRACE_PERIOD_SECS
 		}
 
 		if err := api.UpdateStepStop(buildID, cmd.Name, code); err != nil {
+			log.Printf("hoge UpdateStepStop buildID: %d, stepName: %s, code: %d", buildID, cmd.Name, code)
 			return fmt.Errorf("Updating step stop %q: %v", cmd.Name, err)
 		}
 	}
