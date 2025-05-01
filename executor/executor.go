@@ -331,7 +331,9 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 
 			// これだけでいいかも
 			// log.Printf("gofunc runCode: %d, rcErr: %v, firstError: %v, pipelineId: %s, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", runCode, rcErr, firstError, os.Getenv("SD_PIPELINE_ID"), build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
-			collectLogData(cmd.Name, elapsedTime, runCode, rcErr)
+			logData := collectLogData(cmd.Name, elapsedTime, runCode, rcErr)
+			log.Println(logData)
+
 			// exit code & errors from doRunCommand
 			eCode <- runCode
 			runErr <- rcErr
@@ -440,7 +442,11 @@ func collectLogData(stepName string, elapsedTime time.Duration, runCode int, rcE
 	logMessage := "stepName: " + stepName + ","
 	logMessage += strings.Join(envData, ", ")
 	logMessage += ", runCode: " + strconv.Itoa(runCode)
-	logMessage += ", rcErr: " + rcErr.Error()
+	if rcErr != nil {
+		logMessage += ", rcErr: " + rcErr.Error()
+	} else {
+		logMessage += ", rcErr: nil"
+	}
 	logMessage += ", stepTime: " + elapsedTime.String()
 
 	return logMessage
