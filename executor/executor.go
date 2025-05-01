@@ -330,7 +330,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 			elapsedTime := time.Since(startTime)
 
 			// これだけでいいかも
-			log.Printf("gofunc runCode: %d, rcErr: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", runCode, rcErr, firstError, build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
+			log.Printf("gofunc runCode: %d, rcErr: %v, firstError: %v, pipelineId: %s, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", runCode, rcErr, firstError, os.Getenv("SD_PIPELINE_ID"), build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
 			// exit code & errors from doRunCommand
 			eCode <- runCode
 			runErr <- rcErr
@@ -344,6 +344,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 				firstError = cmdErr
 			}
 			code = <-eCode
+			// いらないかも
 			log.Printf("cmdErr: %v, code, %d, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s", cmdErr, code, firstError, build.ID, build.EventID, build.JobID, cmd.Name)
 		case buildTimeout := <-invokeTimeout:
 			handleBuildTimeout(f, buildTimeout)
@@ -351,6 +352,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 				firstError = buildTimeout
 				code = 3
 			}
+			// いらないかも
 			log.Printf("buildTimeout: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s", buildTimeout, firstError, build.ID, build.EventID, build.JobID, cmd.Name)
 			_ = c.Process.Signal(syscall.SIGABRT)
 			TerminateSleep(shellBin, sourceDir, true) // kill all running sleep
@@ -361,6 +363,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 				firstError = stepAbort
 				code = 1
 			}
+			// いらないかも
 			log.Printf("stepAbort: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s", stepAbort, firstError, build.ID, build.EventID, build.JobID, cmd.Name)
 			_ = c.Process.Signal(syscall.SIGABRT)
 			TerminateSleep(shellBin, sourceDir, false) // kill all running sleep other than sleep $SD_TERMINATION_GRACE_PERIOD_SECS
@@ -392,7 +395,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 
 		elapsedTime := time.Since(startTime)
 
-		log.Printf("teardown: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", cmdErr, firstError, build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
+		log.Printf("teardown: %v, firstError: %v, pipelineId: %s, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", cmdErr, firstError, os.Getenv("SD_PIPELINE_ID"), build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
 
 		if code != ExitOk {
 			stepExitCode = code
