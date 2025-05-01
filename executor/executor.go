@@ -323,9 +323,14 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 		fReader := bufio.NewReader(f)
 
 		go func() {
+			startTime := time.Now()
+
 			runCode, rcErr := doRunCommand(guid, stepFilePath, emitter, f, fReader, cmd.Name)
+
+			elapsedTime := time.Since(startTime)
+
 			// これだけでいいかも
-			log.Printf("gofunc runCode: %d, rcErr: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s", runCode, rcErr, firstError, build.ID, build.EventID, build.JobID, cmd.Name)
+			log.Printf("gofunc runCode: %d, rcErr: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", runCode, rcErr, firstError, build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
 			// exit code & errors from doRunCommand
 			eCode <- runCode
 			runErr <- rcErr
@@ -381,9 +386,13 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 			return fmt.Errorf("Updating step start %q: %v", cmd.Name, err)
 		}
 
+		startTime := time.Now()
+
 		code, cmdErr = doRunTeardownCommand(cmd, emitter, shellBin, exportFile, sourceDir, stepExitCode)
 
-		log.Printf("hogehoge teardown: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s", cmdErr, firstError, build.ID, build.EventID, build.JobID, cmd.Name)
+		elapsedTime := time.Since(startTime)
+
+		log.Printf("teardown: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", cmdErr, firstError, build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
 
 		if code != ExitOk {
 			stepExitCode = code
