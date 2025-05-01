@@ -330,13 +330,12 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 			elapsedTime := time.Since(startTime)
 
 			// これだけでいいかも
-			log.Printf("gofunc runCode: %d, rcErr: %v, firstError: %v, pipelineId: %s, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", runCode, rcErr, firstError, os.Getenv("SD_PIPELINE_ID"), build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
+			// log.Printf("gofunc runCode: %d, rcErr: %v, firstError: %v, pipelineId: %s, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", runCode, rcErr, firstError, os.Getenv("SD_PIPELINE_ID"), build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
+			collectLogData(cmd.Name, elapsedTime, runCode, rcErr)
 			// exit code & errors from doRunCommand
 			eCode <- runCode
 			runErr <- rcErr
 		}()
-
-		log.Printf("hogehoge stepstart")
 
 		select {
 		case cmdErr = <-runErr:
@@ -344,16 +343,12 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 				firstError = cmdErr
 			}
 			code = <-eCode
-			// いらないかも
-			log.Printf("cmdErr: %v, code, %d, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s", cmdErr, code, firstError, build.ID, build.EventID, build.JobID, cmd.Name)
 		case buildTimeout := <-invokeTimeout:
 			handleBuildTimeout(f, buildTimeout)
 			if firstError == nil {
 				firstError = buildTimeout
 				code = 3
 			}
-			// いらないかも
-			log.Printf("buildTimeout: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s", buildTimeout, firstError, build.ID, build.EventID, build.JobID, cmd.Name)
 			_ = c.Process.Signal(syscall.SIGABRT)
 			TerminateSleep(shellBin, sourceDir, true) // kill all running sleep
 
@@ -363,14 +358,11 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 				firstError = stepAbort
 				code = 1
 			}
-			// いらないかも
-			log.Printf("stepAbort: %v, firstError: %v, buildId: %d, eventId: %d, jobId: %d, stepName: %s", stepAbort, firstError, build.ID, build.EventID, build.JobID, cmd.Name)
 			_ = c.Process.Signal(syscall.SIGABRT)
 			TerminateSleep(shellBin, sourceDir, false) // kill all running sleep other than sleep $SD_TERMINATION_GRACE_PERIOD_SECS
 		}
 
 		if err := api.UpdateStepStop(buildID, cmd.Name, code); err != nil {
-			log.Printf("hoge UpdateStepStop buildID: %d, stepName: %s, code: %d", buildID, cmd.Name, code)
 			return fmt.Errorf("Updating step stop %q: %v", cmd.Name, err)
 		}
 	}
@@ -429,4 +421,27 @@ func TerminateSleep(shellBin, sourceDir string, killAll bool) {
 	if err != nil || strings.TrimSpace(stderr.String()) != "" {
 		fmt.Printf("error %v, %v, in terminating sleep", err, strings.TrimSpace(stderr.String()))
 	}
+}
+
+func collectLogData(stepName string, elapsedTime time.Duration, runCode int, rcErr error) string {
+	// 環境変数からキーのリストを取得
+	envKeysRaw := os.Getenv("LOG_ENV_KEYS")
+	envKeys := strings.Split(envKeysRaw, ",")
+
+	// 環境変数の値を取得し、key=valueの形式でスライスに格納
+	var envData []string
+	for _, key := range envKeys {
+		key = strings.TrimSpace(key) // 余分な空白を除去
+		value := os.Getenv(key)
+		envData = append(envData, key+"="+value)
+	}
+
+	// ログメッセージを構築
+	logMessage := "stepName: " + stepName + ","
+	logMessage += strings.Join(envData, ", ")
+	logMessage += ", runCode: " + strconv.Itoa(runCode)
+	logMessage += ", rcErr: " + rcErr.Error()
+	logMessage += ", stepTime: " + elapsedTime.String()
+
+	return logMessage
 }
