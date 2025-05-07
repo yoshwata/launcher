@@ -429,6 +429,7 @@ func TerminateSleep(shellBin, sourceDir string, killAll bool) {
 func collectLogData(stepName string, elapsedTime time.Duration, runCode int, rcErr error) string {
 	// 環境変数からキーのリストを取得
 	// envKeysRaw := os.Getenv("LOG_ENV_KEYS")
+	// 決まった環境変数からしかログ取得を許可しない
 	envKeys := []string{"SD_JOB_NAME", "SD_BUILD_ID", "CONTAINER_IMAGE"}
 
 	// 環境変数の値を取得し、key=valueの形式でスライスに格納
