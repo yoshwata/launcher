@@ -388,7 +388,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 
 		elapsedTime := time.Since(startTime)
 
-		collectLogData(cmd.Name, elapsedTime, code, cmdErr)
+		logData := collectLogData(cmd.Name, elapsedTime, code, cmdErr)
 		log.Println(logData)
 
 		if code != ExitOk {
