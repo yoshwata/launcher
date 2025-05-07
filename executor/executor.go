@@ -329,7 +329,6 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 
 			elapsedTime := time.Since(startTime)
 
-			// これだけでいいかも
 			// log.Printf("gofunc runCode: %d, rcErr: %v, firstError: %v, pipelineId: %s, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", runCode, rcErr, firstError, os.Getenv("SD_PIPELINE_ID"), build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
 			logData := collectLogData(cmd.Name, elapsedTime, runCode, rcErr)
 			log.Println(logData)
@@ -389,7 +388,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 
 		elapsedTime := time.Since(startTime)
 
-		log.Printf("teardown: %v, firstError: %v, pipelineId: %s, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", cmdErr, firstError, os.Getenv("SD_PIPELINE_ID"), build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
+		collectLogData(cmd.Name, elapsedTime, code, cmdErr)
 
 		if code != ExitOk {
 			stepExitCode = code
