@@ -346,7 +346,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 			}
 			code = <-eCode
 		case buildTimeout := <-invokeTimeout:
-			time.Sleep(3 * time.Second)
+			// time.Sleep(3 * time.Second)
 			handleBuildTimeout(f, buildTimeout)
 			if firstError == nil {
 				firstError = buildTimeout
