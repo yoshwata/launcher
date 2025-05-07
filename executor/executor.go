@@ -439,15 +439,26 @@ func collectLogData(stepName string, elapsedTime time.Duration, runCode int, rcE
 	}
 
 	// ログメッセージを構築
-	logMessage := "stepName: " + stepName + ","
-	logMessage += strings.Join(envData, ", ")
-	logMessage += ", runCode: " + strconv.Itoa(runCode)
-	if rcErr != nil {
-		logMessage += ", rcErr: " + rcErr.Error()
-	} else {
-		logMessage += ", rcErr: nil"
-	}
-	logMessage += ", stepTime: " + elapsedTime.String()
+	// logMessage := "stepName: " + stepName + ","
+	// logMessage += strings.Join(envData, ", ")
+	// logMessage += ", runCode: " + strconv.Itoa(runCode)
+	// if rcErr != nil {
+	// 	logMessage += ", rcErr: " + rcErr.Error()
+	// } else {
+	// 	logMessage += ", rcErr: nil"
+	// }
+	// logMessage += ", stepTime: " + elapsedTime.String()
+
+	// 来週これためす
+	// ログメッセージを構築
+	logMessage := fmt.Sprintf(
+		"stepName: %s, %s, runCode: %d, rcErr: %v, stepTime: %s",
+		stepName,
+		strings.Join(envData, ", "),
+		runCode,
+		rcErr,
+		elapsedTime,
+	)
 
 	return logMessage
 }
