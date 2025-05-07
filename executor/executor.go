@@ -329,7 +329,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 
 			elapsedTime := time.Since(startTime)
 
-			logMessage := collectLogData(cmd.Name, elapsedTime, runCode, rcErr)
+			logMessage := collectLogData(cmd.Name, elapsedTime, runCode, rcErr, firstError)
 			log.Println(logMessage)
 			// log.Printf("gofunc runCode: %d, rcErr: %v, firstError: %v, pipelineId: %s, buildId: %d, eventId: %d, jobId: %d, stepName: %s, stepTime: %s", runCode, rcErr, firstError, os.Getenv("SD_PIPELINE_ID"), build.ID, build.EventID, build.JobID, cmd.Name, elapsedTime)
 			// exit code & errors from doRunCommand
@@ -346,6 +346,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 			}
 			code = <-eCode
 		case buildTimeout := <-invokeTimeout:
+			time.Sleep(3 * time.Second)
 			handleBuildTimeout(f, buildTimeout)
 			if firstError == nil {
 				firstError = buildTimeout
@@ -389,7 +390,7 @@ func Run(path string, env []string, emitter screwdriver.Emitter, build screwdriv
 
 		elapsedTime := time.Since(startTime)
 
-		logMessage := collectLogData(cmd.Name, elapsedTime, code, cmdErr)
+		logMessage := collectLogData(cmd.Name, elapsedTime, code, cmdErr, firstError)
 		log.Println(logMessage)
 
 		if code != ExitOk {
@@ -426,7 +427,7 @@ func TerminateSleep(shellBin, sourceDir string, killAll bool) {
 	}
 }
 
-func collectLogData(stepName string, elapsedTime time.Duration, runCode int, rcErr error) string {
+func collectLogData(stepName string, elapsedTime time.Duration, runCode int, rcErr error, firstError error) string {
 	// 環境変数からキーのリストを取得
 	// envKeysRaw := os.Getenv("LOG_ENV_KEYS")
 	// 決まった環境変数からしかログ取得を許可しない
@@ -454,11 +455,12 @@ func collectLogData(stepName string, elapsedTime time.Duration, runCode int, rcE
 	// 来週これためす
 	// ログメッセージを構築
 	logMessage := fmt.Sprintf(
-		"stepName: %s, %s, runCode: %d, rcErr: %v, stepTime: %s",
+		"stepName: %s, %s, runCode: %d, rcErr: %v, firstError: %v, stepTime: %s",
 		stepName,
 		strings.Join(envData, ", "),
 		runCode,
 		rcErr,
+		firstError,
 		elapsedTime,
 	)
 
